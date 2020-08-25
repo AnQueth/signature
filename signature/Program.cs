@@ -8,7 +8,7 @@ namespace signature
     {
         static void Main(string[] args)
         {
-            string root = @"D:\Downloads\Signature Issues\Title Front\";
+            string root = "";
 
             string name = "Lien Relase 1 - Signature area contains seller1 sign contents.png";
 

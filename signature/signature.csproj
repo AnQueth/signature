@@ -9,4 +9,22 @@
     <PackageReference Include="OpenCvSharp4.Windows" Version="4.4.0.20200725" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Lien Relase 1 - Signature area contains seller1 sign contents.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Lien Release 1 - Sign area 1 for IN format.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Lien Release 1 - Sign area 2 for IN format.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Seller2 sign - Signature area contains seller1 sign contents.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Seller2 sign - Signature area contains seller1 sign contents_2.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
