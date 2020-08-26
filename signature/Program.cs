@@ -20,9 +20,9 @@ namespace signature
 
         static void SetupProbabilities()
         {
-            double[] blockAreas = new double[] { 7500, 7500, 14500, 14500,  9900, 18800,    12960,  12960,  12960,  16000,  16000, 16000,   12270,  9900};
-            double[] areas = new double[] {     1974, 1182,  851,   5535,   1000, 3112,     2348,   570,    40,     3259,   0,      32,     2176,   2326};
-            bool[] signature = new bool[] {     true, true,  false, true,   true, true,     true,   false,  false,  true,   false,  false,  true,   true};
+            double[] blockAreas = new double[] { 7500, 7500, 14500, 14500,  9900, 18800,    12960,  12960,  12960,  16000,  16000, 16000,   12270,  9900, 12000, 6875};
+            double[] areas = new double[] {     1974, 1182,  851,   5535,   1000, 3112,     2348,   570,    40,     3259,   0,      32,     2176,   2326, 2137,  1679};
+            bool[] signature = new bool[] {     true, true,  false, true,   true, true,     true,   false,  false,  true,   false,  false,  true,   true, true, true};
 
             Vector[] xdata = new Vector[areas.Length];
             for (int i = 0; i < xdata.Length; i++)
@@ -145,9 +145,14 @@ namespace signature
             Debug.Assert(b == true);
             Console.WriteLine(name + "  seller   " + b);
 
+            name = "Seller2 sign - Signature area contains seller1 sign contents and stamp_2.png";
+            b = RunOn(root + name, new OpenCvSharp.Rect(130, 820, 275, 25));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(75, 960, 480, 25));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
 
-
-          
 
 
             Cv2.WaitKey();
@@ -248,27 +253,52 @@ namespace signature
             int qh =  box.Size().Height / 2;
              int qw =  box.Size().Width / 2;
 
+            var tl = new Rect(0, 0, qw, qh);
+            var vl = new Rect(0, qh, qw, qh);
+            var tr = new Rect(qw, 0, qw, qh);
+            var br = new Rect(qw, qh, qw, qh);
+
             for (var x = 1; x < stats.Size().Height; x++)
             {
                 var left = stats.Get<int>(x, (int)ConnectedComponentsTypes.Left);
                 var top = stats.Get<int>(x, (int)ConnectedComponentsTypes.Top);
-        
-                if(left < qw && top < qh)
+                var width = stats.Get<int>(x, (int)ConnectedComponentsTypes.Width);
+                var height  = stats.Get<int>(x, (int)ConnectedComponentsTypes.Height);
+
+                var re = new Rect(left, top, width, height);
+                if(re.IntersectsWith(tl))
                 {
                     quadrants[0] = 1;
                 }
-                else if (left >= qw && top >= qh) 
-                {
-                    quadrants[3] = 1;
-                }
-                else if (left >= qw && top < qh)
-                {
-                    quadrants[2] = 1;
-                }
-                else if (left < qw && top >= qh)
+                if (re.IntersectsWith(vl))
                 {
                     quadrants[1] = 1;
                 }
+                if (re.IntersectsWith(tr))
+                {
+                    quadrants[2] = 1;
+                }
+                if (re.IntersectsWith(br))
+                {
+                    quadrants[3] = 1;
+                }
+
+                //if (left < qw && top < qh)
+                //{
+                //    quadrants[0] = 1;
+                //}
+                //else if (left >= qw && top >= qh) 
+                //{
+                //    quadrants[3] = 1;
+                //}
+                //else if (left >= qw && top < qh)
+                //{
+                //    quadrants[2] = 1;
+                //}
+                //else if (left < qw && top >= qh)
+                //{
+                //    quadrants[1] = 1;
+                //}
 
                 areas += stats.Get<int>(x, (int)ConnectedComponentsTypes.Area);
                 
@@ -343,7 +373,7 @@ namespace signature
 
 
 
-          //  Cv2.ImShow("box", box);
+            Cv2.ImShow("box", box);
     
             return probableSiganture;
 
