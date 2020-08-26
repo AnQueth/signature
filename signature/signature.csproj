@@ -32,6 +32,9 @@
     <None Update="Seller2 sign - Signature area contains seller1 sign contents.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Seller2 Sign - Signature area contains seller1 sign contents3.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Seller2 sign - Signature area contains seller1 sign contents_2.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

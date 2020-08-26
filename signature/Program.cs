@@ -154,7 +154,16 @@ namespace signature
             Console.WriteLine(name + "  b1   " + b);
 
 
-
+            name = "Seller2 Sign - Signature area contains seller1 sign contents3.png";
+            b = RunOn(root + name, new OpenCvSharp.Rect(20, 880, 420, 30));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(490, 950, 245, 15));
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(490, 695, 245, 15));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
             Cv2.WaitKey();
 
         }
