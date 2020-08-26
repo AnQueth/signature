@@ -1,68 +1,183 @@
-﻿using OpenCvSharp;
+﻿using Microsoft.ML.Probabilistic.Algorithms;
+using Microsoft.ML.Probabilistic.Distributions;
+using Microsoft.ML.Probabilistic.Math;
+using Microsoft.ML.Probabilistic.Models;
+using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using Range = Microsoft.ML.Probabilistic.Models.Range;
 
 namespace signature
 {
     class Program
     {
-        static void Main(string[] args)
+        static VectorGaussian wPosterior;
+        static InferenceEngine engine = new InferenceEngine(new ExpectationPropagation());
+
+        static void SetupProbabilities()
         {
-            string root = "";
+            double[] blockAreas = new double[] { 14500, 14500, 9900, 18800, 12960, 12960, 12960, 12960, 12960, 12270, 9900 };
+            double[] areas = new double[] { 147, 2333, 263, 686, 1169, 22, 49, 0, 2244, 273, 839 };
+            bool[] signature = new bool[] { false, true, true, true, true, false, false, false, true, true, true };
 
-            string name = "Lien Relase 1 - Signature area contains seller1 sign contents.png";
+            Vector[] xdata = new Vector[areas.Length];
+            for (int i = 0; i < xdata.Length; i++)
+                xdata[i] = Vector.FromArray(areas[i], blockAreas[i], 1);
+            VariableArray<Vector> x = Variable.Observed(xdata);
 
-            var b = RunOn(root + name, new Rect(550, 800, 290, 50));
-           
-            Console.WriteLine(name + "  lh1   "  + b);
+            // Create target y  
+            VariableArray<bool> y = Variable.Observed(signature, x.Range);
+
+
+            Variable<Vector> w = Variable.Random(new VectorGaussian(Vector.Zero(3), PositiveDefiniteMatrix.Identity(3)));
+            Range j = y.Range;
+            double noise = 0.1;
+            y[j] = Variable.GaussianFromMeanAndVariance(Variable.InnerProduct(w, x[j]), noise) > 0;
+
+
+
+
+            
+
+
+
+              wPosterior = engine.Infer<VectorGaussian>(w);
+            Console.WriteLine("Dist over w=\n" + wPosterior);
+
+            BinaryFormatter serializer = new BinaryFormatter();
+            // write to disk  
+            using (FileStream stream = new FileStream("temp.bin", FileMode.Create))
+            {
+                serializer.Serialize(stream, wPosterior);
+            }
+            // read from disk  
+            using (FileStream stream = new FileStream("temp.bin", FileMode.Open))
+            {
+                wPosterior = (VectorGaussian)serializer.Deserialize(stream);
+
+            }
+
+
 
          
-              b = RunOn(root + name, new Rect(50, 800, 290, 50));
-            Console.WriteLine(name + "  seller   " + b);
+           
+        }
 
+
+        public static void BayesPointMachine(double[] areas, double[] boxAreas, Variable<Vector> w, VariableArray<bool> y)
+        { // Create x vector, augmented by 1 
+
+            double noise = 0.1;
+            Range j = y.Range; Vector[] xdata = new Vector[areas.Length];
+            for (int i = 0; i < xdata.Length; i++)
+                xdata[i] = Vector.FromArray(areas[i], boxAreas[i], 1);
+            VariableArray<Vector> x = Variable.Observed(xdata, j); // Bayes Point Machine double noise = 0.1;  
+            y[j] = Variable.GaussianFromMeanAndVariance(Variable.InnerProduct(w, x[j]), noise) > 0;
+        }
+        static void Main(string[] args)
+        {
+
+            SetupProbabilities();
+              engine = new InferenceEngine(new ExpectationPropagation());
+            string root = "";
+
+           string name = "Seller1 Sign - Image background might cause issue.png";
+           var b = RunOn(root + name, new OpenCvSharp.Rect(220, 230, 250, 30));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(220, 270, 250, 30));
+              Debug.Assert(b == true); // needs fixing
+            
+            Console.WriteLine(name + "  seller   " + b);
+              name = "Lien Relase 1 - Signature area contains seller1 sign contents.png";
+
+              b = RunOn(root + name, new Rect(550, 800, 290, 50));
+            
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  lh1   " + b);
+
+
+            b = RunOn(root + name, new Rect(50, 800, 290, 50));
+            Console.WriteLine(name + "  seller   " + b);
+            Debug.Assert(b == true);
             name = "Seller2 sign - Signature area contains seller1 sign contents.png";
             b = RunOn(root + name, new OpenCvSharp.Rect(120, 820, 450 - 120, 850 - 820));
             Console.WriteLine(name + "  1 owner   " + b);
-            b =  RunOn(root + name, new OpenCvSharp.Rect(80, 950, 550 - 80, 990 - 950));
+            Debug.Assert(b == true);
+            b = RunOn(root + name, new OpenCvSharp.Rect(80, 950, 550 - 80, 990 - 950));
             Console.WriteLine(name + "  notary   " + b);
-
+            Debug.Assert(b == true);
 
             name = "Lien Release 1 - Sign area 1 for IN format.png";
-            b = RunOn(root + name, new OpenCvSharp.Rect(60, 930, 360 ,36));
+            b = RunOn(root + name, new OpenCvSharp.Rect(60, 930, 360, 36));
+            Debug.Assert(b == true);
             Console.WriteLine(name + "  lr1   " + b);
-            b = RunOn(root +name, new OpenCvSharp.Rect(480, 930, 360, 36));
+            b = RunOn(root + name, new OpenCvSharp.Rect(480, 930, 360, 36));
+            Debug.Assert(b == false);
             Console.WriteLine(name + "  lr2   " + b);
             b = RunOn(root + name, new OpenCvSharp.Rect(480, 670, 360, 36));
+            Debug.Assert(b == false);
             Console.WriteLine(name + "  lr3   " + b);
 
+            name = "Lien Release 1 - Sign area 2 for IN format.png";
+            b = RunOn(root + name, new OpenCvSharp.Rect(460, 600, 400, 40));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  lr1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(460, 760, 400, 40));
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  lr2   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(460, 900, 400, 40));
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  lr3   " + b);
+
+            name = "Buyer Sign - Contains only scribling.png";
+            b = RunOn(root + name, new OpenCvSharp.Rect(480, 400, 409, 30));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(560, 270, 330, 30));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  seller   " + b);
+
+
+
+          
 
 
             Cv2.WaitKey();
-           
+
         }
         static bool RunOn(string file, OpenCvSharp.Rect boundingBox)
         {
             //  OpenCvSharp.Mat m = new OpenCvSharp.Mat(root + "Seller2 sign - Signature area contains seller1 sign contents_2.png", OpenCvSharp.ImreadModes.Grayscale);
             OpenCvSharp.Mat m = new OpenCvSharp.Mat(file, OpenCvSharp.ImreadModes.Grayscale);
-
-
-
-            var g = m.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv, 3, 20);
+ 
+            OpenCvSharp.Mat box2 = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U);
+            
+            m[boundingBox].CopyTo(box2);
+            
+           // box2 = box2.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv, 3, 10);
+          //  Cv2.ImShow("box2", box2);
+            
+            var g = m.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv  , 3, 20);
+            //var g = m.Threshold(128, 255, ThresholdTypes.BinaryInv | ThresholdTypes.Otsu);
             // g = g.Blur(new Size(5,5));
 
-           //  Cv2.ImShow("ggg", g);
+          //   Cv2.ImShow("ggg", g);
 
             var element = Cv2.GetStructuringElement(
                                 MorphShapes.Rect,
                                 new Size(10, 1));
 
             var h = g.MorphologyEx(MorphTypes.Close, element, iterations: 2);
-          //    Cv2.ImShow("dilate", h);
+            //    Cv2.ImShow("dilate", h);
             element = Cv2.GetStructuringElement(
                                 MorphShapes.Rect,
-                                new Size(100, 1));
+                                new Size(80, 1));
             var mask = h.MorphologyEx(MorphTypes.Open, element, iterations: 2);
-              // Cv2.ImShow("mask", mask);
+            // Cv2.ImShow("mask", mask);
 
             Mat newMask = new Mat();
             Cv2.BitwiseNot(mask, newMask);
@@ -72,21 +187,21 @@ namespace signature
             Mat newImage = new Mat();
             g.CopyTo(newImage, newMask);
 
-            // Cv2.ImShow("newImage", newImage);
-
+      
             Cv2.BitwiseNot(newImage, newImage);
+           // Cv2.ImShow("newImage", newImage);
 
             element = Cv2.GetStructuringElement(
                                  MorphShapes.Ellipse,
                                  new Size(2, 2));
 
             var d2 = newImage.MorphologyEx(MorphTypes.Dilate, element);
-            //  Cv2.ImShow("d2", d2);
+           //   Cv2.ImShow("d2", d2);
             element = Cv2.GetStructuringElement(
-                             MorphShapes.Rect,
+                             MorphShapes.Ellipse,
                              new Size(7, 7));
             d2 = d2.MorphologyEx(MorphTypes.Erode, element);
-            //  Cv2.ImShow("d3", d2);
+            // Cv2.ImShow("d3", d2);
             // g = g.MorphologyEx(MorphTypes.Close, element, iterations: 4);
             // g = g.GaussianBlur(new Size(5, 5), 5);
 
@@ -109,6 +224,7 @@ namespace signature
 
             Cv2.BitwiseNot(box, box);
 
+          
             Mat labels = new Mat(), centroids = new Mat();
             Mat stats = new Mat();
 
@@ -126,6 +242,7 @@ namespace signature
             for (var x = 1; x < stats.Size().Height; x++)
             {
                 areas += stats.Get<int>(x, (int)ConnectedComponentsTypes.Area);
+                
             }
 
             /*    for (var x = 0; x <= box.Size().Width; x++)
@@ -178,17 +295,28 @@ namespace signature
             var boxarea = box.Size().Width * box.Size().Height;
 
 
+            double[] areasTest = new double[] { areas };
+            double[] boxAreas = new double[] { boxarea };
+
+            
+            VariableArray<bool> ytest = Variable.Array<bool>(new Range(areasTest.Length));
+            BayesPointMachine(areasTest, boxAreas, Variable.Random(wPosterior), ytest);
+            var res = (DistributionStructArray<Bernoulli, bool>)engine.Infer(ytest);
+            var mean = res[0].GetMean();
+
+
+            Console.WriteLine(boxarea + " " + areas + " " + mean);
             bool probableSiganture = false;
-            if (areas > (boxarea / 50)) 
+            if (mean > 0.5)
             {
                 probableSiganture = true;
             }
 
-            
 
-            Cv2.ImShow(file  + " " + DateTimeOffset.Now.Ticks, box);
+
+            Cv2.ImShow("box", box);
             return probableSiganture;
-       
+
         }
     }
 }
