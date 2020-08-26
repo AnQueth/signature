@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using Range = Microsoft.ML.Probabilistic.Models.Range;
 
@@ -19,9 +20,9 @@ namespace signature
 
         static void SetupProbabilities()
         {
-            double[] blockAreas = new double[] { 14500, 14500, 9900, 18800, 12960, 12960, 12960, 12960, 12960, 12270, 9900 };
-            double[] areas = new double[] { 147, 2333, 263, 686, 1169, 22, 49, 0, 2244, 273, 839 };
-            bool[] signature = new bool[] { false, true, true, true, true, false, false, false, true, true, true };
+            double[] blockAreas = new double[] { 7500, 7500, 14500, 14500,  9900, 18800,    12960,  12960,  12960,  16000,  16000, 16000,   12270,  9900};
+            double[] areas = new double[] {     1974, 1182,  851,   5535,   1000, 3112,     2348,   570,    40,     3259,   0,      32,     2176,   2326};
+            bool[] signature = new bool[] {     true, true,  false, true,   true, true,     true,   false,  false,  true,   false,  false,  true,   true};
 
             Vector[] xdata = new Vector[areas.Length];
             for (int i = 0; i < xdata.Length; i++)
@@ -89,13 +90,14 @@ namespace signature
             Debug.Assert(b == true);
             Console.WriteLine(name + "  b1   " + b);
             b = RunOn(root + name, new OpenCvSharp.Rect(220, 270, 250, 30));
-              Debug.Assert(b == true); // needs fixing
+          
+            Debug.Assert(b == true);  
             
             Console.WriteLine(name + "  seller   " + b);
               name = "Lien Relase 1 - Signature area contains seller1 sign contents.png";
 
               b = RunOn(root + name, new Rect(550, 800, 290, 50));
-            
+        
             Debug.Assert(b == false);
             Console.WriteLine(name + "  lh1   " + b);
 
@@ -106,6 +108,7 @@ namespace signature
             name = "Seller2 sign - Signature area contains seller1 sign contents.png";
             b = RunOn(root + name, new OpenCvSharp.Rect(120, 820, 450 - 120, 850 - 820));
             Console.WriteLine(name + "  1 owner   " + b);
+             
             Debug.Assert(b == true);
             b = RunOn(root + name, new OpenCvSharp.Rect(80, 950, 550 - 80, 990 - 950));
             Console.WriteLine(name + "  notary   " + b);
@@ -119,6 +122,7 @@ namespace signature
             Debug.Assert(b == false);
             Console.WriteLine(name + "  lr2   " + b);
             b = RunOn(root + name, new OpenCvSharp.Rect(480, 670, 360, 36));
+           // Cv2.WaitKey();
             Debug.Assert(b == false);
             Console.WriteLine(name + "  lr3   " + b);
 
@@ -154,15 +158,15 @@ namespace signature
             //  OpenCvSharp.Mat m = new OpenCvSharp.Mat(root + "Seller2 sign - Signature area contains seller1 sign contents_2.png", OpenCvSharp.ImreadModes.Grayscale);
             OpenCvSharp.Mat m = new OpenCvSharp.Mat(file, OpenCvSharp.ImreadModes.Grayscale);
  
-            OpenCvSharp.Mat box2 = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U);
+           // OpenCvSharp.Mat box2 = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U);
             
-            m[boundingBox].CopyTo(box2);
+          //  m[boundingBox].CopyTo(box2);
             
            // box2 = box2.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv, 3, 10);
           //  Cv2.ImShow("box2", box2);
             
-            var g = m.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv  , 3, 20);
-            //var g = m.Threshold(128, 255, ThresholdTypes.BinaryInv | ThresholdTypes.Otsu);
+            //var g = m.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv  , 3, 20);
+            var g = m.Threshold(200, 255, ThresholdTypes.BinaryInv | ThresholdTypes.Otsu);
             // g = g.Blur(new Size(5,5));
 
           //   Cv2.ImShow("ggg", g);
@@ -177,7 +181,7 @@ namespace signature
                                 MorphShapes.Rect,
                                 new Size(80, 1));
             var mask = h.MorphologyEx(MorphTypes.Open, element, iterations: 2);
-            // Cv2.ImShow("mask", mask);
+            //Cv2.ImShow("mask", mask);
 
             Mat newMask = new Mat();
             Cv2.BitwiseNot(mask, newMask);
@@ -239,8 +243,33 @@ namespace signature
 
             int areas = 0;
 
+            int[] quadrants = new int[4];
+         
+            int qh =  box.Size().Height / 2;
+             int qw =  box.Size().Width / 2;
+
             for (var x = 1; x < stats.Size().Height; x++)
             {
+                var left = stats.Get<int>(x, (int)ConnectedComponentsTypes.Left);
+                var top = stats.Get<int>(x, (int)ConnectedComponentsTypes.Top);
+        
+                if(left < qw && top < qh)
+                {
+                    quadrants[0] = 1;
+                }
+                else if (left >= qw && top >= qh) 
+                {
+                    quadrants[3] = 1;
+                }
+                else if (left >= qw && top < qh)
+                {
+                    quadrants[2] = 1;
+                }
+                else if (left < qw && top >= qh)
+                {
+                    quadrants[1] = 1;
+                }
+
                 areas += stats.Get<int>(x, (int)ConnectedComponentsTypes.Area);
                 
             }
@@ -305,16 +334,17 @@ namespace signature
             var mean = res[0].GetMean();
 
 
-            Console.WriteLine(boxarea + " " + areas + " " + mean);
+            Console.WriteLine(boxarea + " " + areas + " " + mean + " " + quadrants.Sum());
             bool probableSiganture = false;
-            if (mean > 0.5)
+            if (mean > 0.5 && quadrants.Sum() > 1)
             {
                 probableSiganture = true;
             }
 
 
 
-            Cv2.ImShow("box", box);
+          //  Cv2.ImShow("box", box);
+    
             return probableSiganture;
 
         }
