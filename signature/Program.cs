@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Range = Microsoft.ML.Probabilistic.Models.Range;
 
 namespace signature
@@ -17,12 +19,21 @@ namespace signature
     {
         static VectorGaussian wPosterior;
         static InferenceEngine engine = new InferenceEngine(new ExpectationPropagation());
+        static List<double> foundBlockAreas = new List<double>();
+        static List<double> foundAreas = new List<double>();
+        static List<bool> results = new List<bool>();
 
         static void SetupProbabilities()
         {
-            double[] blockAreas = new double[] { 7500, 7500, 14500, 14500,  9900, 18800,    12960,  12960,  12960,  16000,  16000, 16000,   12270,  9900, 12000, 6875};
-            double[] areas = new double[] {     1974, 1182,  851,   5535,   1000, 3112,     2348,   570,    40,     3259,   0,      32,     2176,   2326, 2137,  1679};
-            bool[] signature = new bool[] {     true, true,  false, true,   true, true,     true,   false,  false,  true,   false,  false,  true,   true, true, true};
+            double[] blockAreas = new double[] { 7500, 14500, 14500, 9900, 18800, 12960, 12960, 12960, 16000, 16000, 16000, 12270, 9900,  6875, 3675 };
+            double[] areas = new double[] { 1291, 773, 3033, 1435, 1681, 1821, 137, 225, 3259, 0, 32, 2176, 2326,  1679, 9 };
+            bool[] signature = new bool[] { true, false, true, true, true, true, false, false, true, false, false, true, true,  true, false };
+
+            //double[] blockAreas = JsonSerializer.Deserialize<double[]>( "[7500,7500,14500,14500,9900,18800,12960,12960,12960,16000,16000,16000,12270,9900,6875,12000,12600,3675,3675,3675,3675,3675,3675]");
+            //double[] areas = JsonSerializer.Deserialize<double[]>(      "[1291,2757,773,3033,1435,1681,1821,137,225,2294,35,155,1253,1715,1458,1200,1733,101,813,628,914,1,9]");
+            //bool[] signature = JsonSerializer.Deserialize<bool[]>("[true,true,false,true,true,true,true,false,false,true,false,false,true,true,true,true,true,false,true,true,true,false,false]");
+
+
 
             Vector[] xdata = new Vector[areas.Length];
             for (int i = 0; i < xdata.Length; i++)
@@ -180,227 +191,163 @@ namespace signature
             b = RunOn(root + name, new OpenCvSharp.Rect(620, 280, 245, 15));
             Debug.Assert(b == false);
             Console.WriteLine(name + "  cos   " + b);
+
+            string fas = JsonSerializer.Serialize( foundBlockAreas.ToArray());
+            string fa = JsonSerializer.Serialize(foundAreas.ToArray());
+            string rb = JsonSerializer.Serialize(results.ToArray());
+
             Cv2.WaitKey();
 
         }
         static bool RunOn(string file, OpenCvSharp.Rect boundingBox)
         {
-            //  OpenCvSharp.Mat m = new OpenCvSharp.Mat(root + "Seller2 sign - Signature area contains seller1 sign contents_2.png", OpenCvSharp.ImreadModes.Grayscale);
-            OpenCvSharp.Mat m = new OpenCvSharp.Mat(file, OpenCvSharp.ImreadModes.Grayscale);
- 
-           // OpenCvSharp.Mat box2 = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U);
-            
-          //  m[boundingBox].CopyTo(box2);
-            
-           // box2 = box2.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv, 3, 10);
-          //  Cv2.ImShow("box2", box2);
-            
-            //var g = m.AdaptiveThreshold(255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.BinaryInv  , 3, 20);
-            var g = m.Threshold(200, 255, ThresholdTypes.BinaryInv | ThresholdTypes.Otsu);
-            // g = g.Blur(new Size(5,5));
-
-          //   Cv2.ImShow("ggg", g);
-
-            var element = Cv2.GetStructuringElement(
-                                MorphShapes.Rect,
-                                new Size(10, 1));
-
-            var h = g.MorphologyEx(MorphTypes.Close, element, iterations: 2);
-            //    Cv2.ImShow("dilate", h);
-            element = Cv2.GetStructuringElement(
-                                MorphShapes.Rect,
-                                new Size(80, 1));
-            var mask = h.MorphologyEx(MorphTypes.Open, element, iterations: 2);
-            //Cv2.ImShow("mask", mask);
-
-            Mat newMask = new Mat();
-            Cv2.BitwiseNot(mask, newMask);
-
-            //  Cv2.ImShow("newMask", newMask);
-
-            Mat newImage = new Mat();
-            g.CopyTo(newImage, newMask);
-
-      
-            Cv2.BitwiseNot(newImage, newImage);
-           // Cv2.ImShow("newImage", newImage);
-
-            element = Cv2.GetStructuringElement(
-                                 MorphShapes.Ellipse,
-                                 new Size(2, 2));
-
-            var d2 = newImage.MorphologyEx(MorphTypes.Dilate, element);
-           //   Cv2.ImShow("d2", d2);
-            element = Cv2.GetStructuringElement(
-                             MorphShapes.Ellipse,
-                             new Size(7, 7));
-            d2 = d2.MorphologyEx(MorphTypes.Erode, element);
-            // Cv2.ImShow("d3", d2);
-            // g = g.MorphologyEx(MorphTypes.Close, element, iterations: 4);
-            // g = g.GaussianBlur(new Size(5, 5), 5);
-
-            // Rect r = new OpenCvSharp.Rect(80, 950, 550 - 80, 990 - 950);
-            // Rect r = new OpenCvSharp.Rect(120, 820, 450 - 120 , 850 - 820);
-            OpenCvSharp.Mat box = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U);
-            //var horizontal_kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(25, 1));
-            //g = g.MorphologyEx(MorphTypes.Open, horizontal_kernel, iterations: 2);
-            //Cv2.ImShow("g", g);
-
-            // Cv2.FindContours(g, out var cnts, out var hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
-
-
-
-            //Cv2.DrawContours(g, cnts, -1, new Scalar(255, 255, 255), 5, hierarchy: hierarchy);
-            //Cv2.ImShow("gx", g);
-
-
-            d2[boundingBox].CopyTo(box);
-
-            Cv2.BitwiseNot(box, box);
-
-          
-            Mat labels = new Mat(), centroids = new Mat();
-            Mat stats = new Mat();
-
-            int cnt = Cv2.ConnectedComponentsWithStats(box, labels, stats, centroids, PixelConnectivity.Connectivity8);
-
-
-
-
-            //   Cv2.FindContours(box, out var boxes, out var h2, RetrievalModes.List, ContourApproximationModes.ApproxNone);
-
-            //   Cv2.CvtColor(box, box, ColorConversionCodes.GRAY2BGR);
-
             int areas = 0;
 
             int[] quadrants = new int[4];
-         
-            int qh =  box.Size().Height / 2;
-             int qw =  box.Size().Width / 2;
-
-            var tl = new Rect(0, 0, qw, qh);
-            var vl = new Rect(0, qh, qw, qh);
-            var tr = new Rect(qw, 0, qw, qh);
-            var br = new Rect(qw, qh, qw, qh);
-
-            for (var x = 1; x < stats.Size().Height; x++)
+            using (OpenCvSharp.Mat m = new OpenCvSharp.Mat(file, OpenCvSharp.ImreadModes.Grayscale))
             {
-                var left = stats.Get<int>(x, (int)ConnectedComponentsTypes.Left);
-                var top = stats.Get<int>(x, (int)ConnectedComponentsTypes.Top);
-                var width = stats.Get<int>(x, (int)ConnectedComponentsTypes.Width);
-                var height  = stats.Get<int>(x, (int)ConnectedComponentsTypes.Height);
-
-                var re = new Rect(left, top, width, height);
-                if(re.IntersectsWith(tl))
+                //blur the image a little
+                using (var blurred = m.GaussianBlur(new Size(3, 3), 0))
                 {
-                    quadrants[0] = 1;
-                }
-                if (re.IntersectsWith(vl))
-                {
-                    quadrants[1] = 1;
-                }
-                if (re.IntersectsWith(tr))
-                {
-                    quadrants[2] = 1;
-                }
-                if (re.IntersectsWith(br))
-                {
-                    quadrants[3] = 1;
-                }
-
-                //if (left < qw && top < qh)
-                //{
-                //    quadrants[0] = 1;
-                //}
-                //else if (left >= qw && top >= qh) 
-                //{
-                //    quadrants[3] = 1;
-                //}
-                //else if (left >= qw && top < qh)
-                //{
-                //    quadrants[2] = 1;
-                //}
-                //else if (left < qw && top >= qh)
-                //{
-                //    quadrants[1] = 1;
-                //}
-
-                areas += stats.Get<int>(x, (int)ConnectedComponentsTypes.Area);
-                
-            }
-
-            /*    for (var x = 0; x <= box.Size().Width; x++)
-                {
-                    for (var y = 0; y <= box.Size().Height; y++)
+                    //make the image binary black or white and make black the background color
+                    using (var g = blurred.Threshold(200, 255, ThresholdTypes.BinaryInv | ThresholdTypes.Otsu))
                     {
-
-
-
-
-                        var l = labels.Get<int>(y, x);
-
-
-
-                        if (l != 0)
+                        
+                        var element = Cv2.GetStructuringElement(
+                                            MorphShapes.Rect,
+                                            new Size(50, 1));
+                        //remove lines from dark background image by creating a mask
+                        using (var mask = g.MorphologyEx(MorphTypes.Open, element, iterations: 2))
                         {
-                            var i = stats.Get<int>(l, (int)ConnectedComponentsTypes.Area);
-                            areas += i;
-                            //var z = box.Get<Vec3b>(y,x);
-                            //z.Item0 = 0;
-                            //z.Item1 = 0;
-                            //z.Item2 = 255;
-                            //box.Set(y, x, z);
+
+                            using (Mat newMask = new Mat())
+                            {
+
+                                //mask bits should be 0 to skip copying items
+                                Cv2.BitwiseNot(mask, newMask);
 
 
+
+                                using (Mat newImage = new Mat())
+                                {
+                                    //make new image and apply mask so as to not copy the lines
+                                    g.CopyTo(newImage, newMask);
+
+                                    //create the box image
+                                    using (OpenCvSharp.Mat box = new OpenCvSharp.Mat(new Size(boundingBox.Width, boundingBox.Height), MatType.CV_8U))
+                                    {
+
+                                        //copy to the box
+                                        newImage[boundingBox].CopyTo(box);
+
+
+
+
+                                        using (Mat labels = new Mat())
+                                        {
+                                            using (var centroids = new Mat())
+                                            {
+                                                using (Mat stats = new Mat())
+                                                {
+
+                                                    //find the white blobs
+                                                    //populate the quadrants blobs appear in
+                                                    //create total area of white stuff
+
+                                                    int cnt = Cv2.ConnectedComponentsWithStats(box, labels, stats, centroids, PixelConnectivity.Connectivity8);
+#if usequadrants
+
+                                                    int qh = box.Size().Height / 2;
+                                                    int qw = box.Size().Width / 2;
+
+                                                    var tl = new Rect(0, 0, qw, qh);
+                                                    var vl = new Rect(0, qh, qw, qh);
+                                                    var tr = new Rect(qw, 0, qw, qh);
+                                                    var br = new Rect(qw, qh, qw, qh);
+#endif
+                                                    for (var x = 1; x < stats.Size().Height; x++)
+                                                    {
+                                                        #if usequadrants
+                                                        var left = stats.Get<int>(x, (int)ConnectedComponentsTypes.Left);
+                                                        var top = stats.Get<int>(x, (int)ConnectedComponentsTypes.Top);
+                                                        var width = stats.Get<int>(x, (int)ConnectedComponentsTypes.Width);
+                                                        var height = stats.Get<int>(x, (int)ConnectedComponentsTypes.Height);
+
+                                                        var re = new Rect(left, top, width, height);
+                                                        if (re.IntersectsWith(tl))
+                                                        {
+                                                            quadrants[0] = 1;
+                                                        }
+                                                        if (re.IntersectsWith(vl))
+                                                        {
+                                                            quadrants[1] = 1;
+                                                        }
+                                                        if (re.IntersectsWith(tr))
+                                                        {
+                                                            quadrants[2] = 1;
+                                                        }
+                                                        if (re.IntersectsWith(br))
+                                                        {
+                                                            quadrants[3] = 1;
+                                                        }
+
+
+#endif
+                                                        areas += stats.Get<int>(x, (int)ConnectedComponentsTypes.Area);
+
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        var boxarea = box.Size().Width * box.Size().Height;
+
+
+
+                                        double[] areasTest = new double[] { areas };
+                                        double[] boxAreas = new double[] { boxarea };
+
+
+                                        //use infer.net to determine if the mean is good or not
+                                        VariableArray<bool> ytest = Variable.Array<bool>(new Range(areasTest.Length));
+                                        BayesPointMachine(areasTest, boxAreas, Variable.Random(wPosterior), ytest);
+                                        var res = (DistributionStructArray<Bernoulli, bool>)engine.Infer(ytest);
+                                        var mean = res[0].GetMean();
+
+
+                                        Console.WriteLine(boxarea + " " + areas + " " + mean + " "
+                                            #if usequadrants
+                                            + quadrants.Sum());
+#else
+                                            );
+#endif
+                                        bool probableSiganture = false;
+                                        if (mean > 0.5
+#if usequadrants
+                                        && quadrants.Sum() > 1)
+#endif
+                                        )
+                                        {
+                                            probableSiganture = true;
+                                        }
+
+
+                                        foundBlockAreas.Add(boxarea);
+                                        foundAreas.Add(areas);
+                                        results.Add(probableSiganture);
+
+
+
+                                        //  Cv2.ImShow("box", box);
+                                        //  Cv2.WaitKey();
+                                        return probableSiganture;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            */
-            //Cv2.ImShow("aaa", box);
-            //double maxCountour = 0.0;
-
-            //foreach (var x in boxes)
-            //{
-            //    var r2 = Cv2.BoundingRect(x);
-            //    if (r2.Width != box.Width && r2.Height != box.Height)
-            //    {
-            //        Cv2.Rectangle(box, r2, new Scalar(0, 255, 0), 2);
-            //        var c = Cv2.ContourArea(x);
-            //        if (c > 100)
-            //            maxCountour += c;
-            //    }
-            //}
-
-            //Point[] p = new Point[4];
-            //p[0] = new Point(0, 0);
-            //p[1] = new Point(box.Size().Width, 0);
-            //p[2] = new Point(box.Size().Width, box.Size().Height);
-            //p[3] = new Point(0, box.Size().Height);
-            var boxarea = box.Size().Width * box.Size().Height;
-
-
-            double[] areasTest = new double[] { areas };
-            double[] boxAreas = new double[] { boxarea };
-
-            
-            VariableArray<bool> ytest = Variable.Array<bool>(new Range(areasTest.Length));
-            BayesPointMachine(areasTest, boxAreas, Variable.Random(wPosterior), ytest);
-            var res = (DistributionStructArray<Bernoulli, bool>)engine.Infer(ytest);
-            var mean = res[0].GetMean();
-
-
-            Console.WriteLine(boxarea + " " + areas + " " + mean + " " + quadrants.Sum());
-            bool probableSiganture = false;
-            if (mean > 0.5 && quadrants.Sum() > 1)
-            {
-                probableSiganture = true;
             }
-
-
-
-            Cv2.ImShow("box", box);
-    
-            return probableSiganture;
 
         }
     }
