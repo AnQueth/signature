@@ -26,6 +26,9 @@
     <None Update="Seller1 Sign - Image background might cause issue.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Seller1 Sign - Image background might cause issue_2.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Seller2 sign - Signature area contains seller1 sign contents and stamp_2.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -164,6 +164,22 @@ namespace signature
             b = RunOn(root + name, new OpenCvSharp.Rect(490, 695, 245, 15));
             Debug.Assert(b == true);
             Console.WriteLine(name + "  b1   " + b);
+
+            name = "Seller1 Sign - Image background might cause issue_2.png";
+            b = RunOn(root + name, new OpenCvSharp.Rect(230, 240, 245, 15));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  b1   " + b);
+            b = RunOn(root + name, new OpenCvSharp.Rect(230, 280, 245, 15));
+            Debug.Assert(b == true);
+            Console.WriteLine(name + "  sq   " + b);
+
+            b = RunOn(root + name, new OpenCvSharp.Rect(620, 240, 245, 15));
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  cob   " + b);
+
+            b = RunOn(root + name, new OpenCvSharp.Rect(620, 280, 245, 15));
+            Debug.Assert(b == false);
+            Console.WriteLine(name + "  cos   " + b);
             Cv2.WaitKey();
 
         }
